@@ -1,0 +1,19 @@
+[tool.poetry]
+name = "python-github-analysis"
+version = "0.1.0"
+description = ""
+authors = ["lycheejam <lycheejamwow@gmail.com>"]
+
+[tool.poetry.dependencies]
+python = "^3.7"
+python-dotenv = "^0.21.0"
+PyGithub = "^1.57"
+
+[tool.poetry.dev-dependencies]
+black = "^22.12.0"
+flake8 = "5.0.4"
+pre-commit = "^2.21.0"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
