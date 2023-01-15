@@ -1,5 +1,6 @@
 import os
-import pprint
+import traceback
+import json
 from dotenv import load_dotenv
 from github import Github
 
@@ -13,15 +14,29 @@ class GithubPullRequestAnalysis:
     def main(self):
         repo = self.g_client.get_repo("PyGithub/PyGithub")
         pullrequests = repo.get_pulls(state="all", sort="created", direction="desc")
-        for pullrequest in pullrequests:
-            pprint.pprint(pullrequest.number)
-            pprint.pprint(pullrequest.user.email)
-            pprint.pprint(pullrequest.base.ref)
-            pprint.pprint(pullrequest.head.ref)
-            pprint.pprint(pullrequest.created_at)
-            pprint.pprint(pullrequest.merged_at)
-            pprint.pprint(pullrequest.merged_by.email)
-            pprint.pprint(pullrequest.closed_at)
+
+        results = []
+
+        try:
+            for pullrequest in pullrequests[:5]:
+                result = {
+                    "pullrequest_number": pullrequest.number,
+                    "base_ref": pullrequest.base.ref,
+                    "head_ref": pullrequest.head.ref,
+                    "created_at": pullrequest.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+                    "create_by": pullrequest.user.email,
+                    # fmt: off
+                    "merged_at": pullrequest.merged_at.strftime("%Y-%m-%d %H:%M:%S") if pullrequest.merged_at != None else None,  # noqa: E501,E711
+                    "merged_by": pullrequest.merged_by.email if pullrequest.merged_by != None else None,  # noqa: E501,E711
+                    "closed_at": pullrequest.closed_at.strftime("%Y-%m-%d %H:%M:%S") if pullrequest.closed_at != None else None  # noqa: E501,E711
+                    # fmt: on
+                }
+                results.append(result)
+        except Exception:
+            print(traceback.format_exc())
+
+        with open("pullrequests.json", "w") as f:
+            json.dump(results, f, indent=4)
 
     def authorize_client(self):
         return Github(login_or_token=os.environ.get("GITHUB_PAT"))
