@@ -17,3 +17,22 @@ pre-commit = "^2.21.0"
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 88
+target-version = ['py37']
+include = '\.pyi?$'
+exclude = '''
+(
+    \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | \.aws-sam
+  | _build
+  | buck-out
+  | build
+  | dist
+)
+'''
