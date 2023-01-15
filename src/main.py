@@ -1,6 +1,7 @@
 import os
 import traceback
 import json
+import pprint
 from dotenv import load_dotenv
 from github import Github
 
@@ -12,31 +13,55 @@ class GithubPullRequestAnalysis:
         self.g_client = self.authorize_client()
 
     def main(self):
-        repo = self.g_client.get_repo("PyGithub/PyGithub")
-        pullrequests = repo.get_pulls(state="all", sort="created", direction="desc")
+        repo_list = ["PyGithub/PyGithub"]
+        for repo_name in repo_list:
+            repo = self.g_client.get_repo(repo_name)
+            pullrequests = repo.get_pulls(state="all", sort="created", direction="desc")
 
-        results = []
+            results = []
 
-        try:
-            for pullrequest in pullrequests[:5]:
-                result = {
-                    "pullrequest_number": pullrequest.number,
-                    "base_ref": pullrequest.base.ref,
-                    "head_ref": pullrequest.head.ref,
-                    "created_at": pullrequest.created_at.strftime("%Y-%m-%d %H:%M:%S"),
-                    "create_by": pullrequest.user.email,
-                    # fmt: off
-                    "merged_at": pullrequest.merged_at.strftime("%Y-%m-%d %H:%M:%S") if pullrequest.merged_at != None else None,  # noqa: E501,E711
-                    "merged_by": pullrequest.merged_by.email if pullrequest.merged_by != None else None,  # noqa: E501,E711
-                    "closed_at": pullrequest.closed_at.strftime("%Y-%m-%d %H:%M:%S") if pullrequest.closed_at != None else None  # noqa: E501,E711
-                    # fmt: on
-                }
-                results.append(result)
-        except Exception:
-            print(traceback.format_exc())
+            try:
+                for pullrequest in pullrequests[:5]:
+                    review_events = pullrequest.get_reviews()
+                    reviews = []
+                    for review_event in review_events:
+                        review = {
+                            "submitted_by": review_event.user.email,
+                            "state": review_event.state,
+                            "submitted_at": review_event.submitted_at.strftime(
+                                "%Y-%m-%d %H:%M:%S"
+                            ),
+                        }
+                        reviews.append(review)
 
-        with open("pullrequests.json", "w") as f:
-            json.dump(results, f, indent=4)
+                    result = {
+                        "pullrequest_number": pullrequest.number,
+                        "base_ref": pullrequest.base.ref,
+                        "head_ref": pullrequest.head.ref,
+                        "created_at": pullrequest.created_at.strftime(
+                            "%Y-%m-%d %H:%M:%S"
+                        ),
+                        "create_by": pullrequest.user.email,
+                        # fmt: off
+                        "merged_at": pullrequest.merged_at.strftime("%Y-%m-%d %H:%M:%S") if pullrequest.merged_at != None else None,  # noqa: E501,E711
+                        "merged_by": pullrequest.merged_by.email if pullrequest.merged_by != None else None,  # noqa: E501,E711
+                        "closed_at": pullrequest.closed_at.strftime("%Y-%m-%d %H:%M:%S") if pullrequest.closed_at != None else None,  # noqa: E501,E711
+                        "reviews": reviews if len(reviews) != 0 else None
+                        # noqa: E501,E711
+                        # fmt: on
+                    }
+                    results.append(result)
+                    pprint.pprint(self.g_client.get_rate_limit())
+            except Exception:
+                print(traceback.format_exc())
+            # TODO: RateLimitExceededExceptionのretry実装
+
+            file_name = repo_name.split("/")[1] + "_pullrequest.json"
+            file_path = os.path.join(
+                os.path.dirname(os.path.abspath(__file__)), "../data", file_name
+            )
+            with open(file_path, "w") as f:
+                json.dump(results, f, indent=4)
 
     def authorize_client(self):
         return Github(login_or_token=os.environ.get("GITHUB_PAT"))
