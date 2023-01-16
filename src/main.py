@@ -1,9 +1,11 @@
 import os
 import traceback
-import json
 import pprint
 from dotenv import load_dotenv
 from github import Github
+from models.pullrequest_model import PullRequest
+from models.reviewer_model import Reviewer
+from models.setting import session
 
 load_dotenv()
 
@@ -18,50 +20,56 @@ class GithubPullRequestAnalysis:
             repo = self.g_client.get_repo(repo_name)
             pullrequests = repo.get_pulls(state="all", sort="created", direction="desc")
 
-            results = []
-
             try:
-                for pullrequest in pullrequests[:5]:
-                    review_events = pullrequest.get_reviews()
-                    reviews = []
-                    for review_event in review_events:
-                        review = {
-                            "submitted_by": review_event.user.login,
-                            "state": review_event.state,
-                            "submitted_at": review_event.submitted_at.strftime(
-                                "%Y-%m-%d %H:%M:%S"
-                            ),
-                        }
-                        reviews.append(review)
+                for pullrequest in pullrequests:
+                    merged_at = None
+                    if pullrequest.merged_at is not None:
+                        merged_at = pullrequest.merged_at
 
-                    result = {
-                        "pullrequest_number": pullrequest.number,
-                        "base_ref": pullrequest.base.ref,
-                        "head_ref": pullrequest.head.ref,
-                        "created_at": pullrequest.created_at.strftime(
-                            "%Y-%m-%d %H:%M:%S"
-                        ),
-                        "create_by": pullrequest.user.login,
-                        # fmt: off
-                        "merged_at": pullrequest.merged_at.strftime("%Y-%m-%d %H:%M:%S") if pullrequest.merged_at != None else None,  # noqa: E501,E711
-                        "merged_by": pullrequest.merged_by.login if pullrequest.merged_by != None else None,  # noqa: E501,E711
-                        "closed_at": pullrequest.closed_at.strftime("%Y-%m-%d %H:%M:%S") if pullrequest.closed_at != None else None,  # noqa: E501,E711
-                        "reviews": reviews if len(reviews) != 0 else None
-                        # noqa: E501,E711
-                        # fmt: on
-                    }
-                    results.append(result)
-                    pprint.pprint(self.g_client.get_rate_limit())
+                    merged_by = None
+                    if pullrequest.merged_by is not None:
+                        merged_by = pullrequest.merged_by.login
+
+                    closed_at = None
+                    if pullrequest.closed_at is not None:
+                        closed_at = pullrequest.closed_at
+
+                    result = PullRequest(
+                        repo=repo_name,
+                        p_id=pullrequest.id,
+                        p_number=pullrequest.number,
+                        base_ref=pullrequest.base.ref,
+                        head_ref=pullrequest.head.ref,
+                        p_created_at=pullrequest.created_at,
+                        p_create_by=pullrequest.user.login,
+                        merged_at=merged_at,
+                        merged_by=merged_by,
+                        closed_at=closed_at,
+                    )
+                    session.add(result)
+                    session.commit()
+
+                    review_events = pullrequest.get_reviews()
+                    for review_event in review_events:
+                        review = Reviewer(
+                            reviewer_id=review_event.id,
+                            pullrequest_id=result.id,
+                            submitted_at=review_event.submitted_at,
+                            submitted_by=review_event.user.login,
+                            state=review_event.state,
+                        )
+                        session.add(review)
+                        session.commit()
             except Exception:
-                print(traceback.format_exc())
+                pprint.pprint(traceback.format_exc())
             # TODO: RateLimitExceededExceptionのretry実装
 
-            file_name = repo_name.split("/")[1] + "_pullrequest.json"
-            file_path = os.path.join(
-                os.path.dirname(os.path.abspath(__file__)), "../data", file_name
-            )
-            with open(file_path, "w") as f:
-                json.dump(results, f, indent=4)
+            # file_name = repo_name.split("/")[1] + "_pullrequest.json"
+            # file_path = os.path.join(
+            #     os.path.dirname(os.path.abspath(__file__)), "../data", file_name
+            # )
+            # with open(file_path, "w") as f:
+            #     json.dump(results, f, indent=4)
 
     def authorize_client(self):
         return Github(login_or_token=os.environ.get("GITHUB_PAT"))
