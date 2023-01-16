@@ -8,6 +8,7 @@ authors = ["lycheejam <lycheejamwow@gmail.com>"]
 python = "^3.7"
 python-dotenv = "^0.21.0"
 PyGithub = "^1.57"
+sqlalchemy = "^1.4.46"
 
 [tool.poetry.dev-dependencies]
 black = "^22.12.0"
