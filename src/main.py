@@ -50,12 +50,16 @@ class GithubPullRequestAnalysis:
                     session.commit()
 
                     review_events = pullrequest.get_reviews()
+
                     for review_event in review_events:
+                        submitted_by = None
+                        if review_event.user is not None:
+                            submitted_by = review_event.user.login
                         review = Reviewer(
                             reviewer_id=review_event.id,
                             pullrequest_id=result.id,
                             submitted_at=review_event.submitted_at,
-                            submitted_by=review_event.user.login,
+                            submitted_by=submitted_by,
                             state=review_event.state,
                         )
                         session.add(review)
