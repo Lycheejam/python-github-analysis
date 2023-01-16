@@ -26,7 +26,7 @@ class GithubPullRequestAnalysis:
                     reviews = []
                     for review_event in review_events:
                         review = {
-                            "submitted_by": review_event.user.email,
+                            "submitted_by": review_event.user.login,
                             "state": review_event.state,
                             "submitted_at": review_event.submitted_at.strftime(
                                 "%Y-%m-%d %H:%M:%S"
@@ -41,10 +41,10 @@ class GithubPullRequestAnalysis:
                         "created_at": pullrequest.created_at.strftime(
                             "%Y-%m-%d %H:%M:%S"
                         ),
-                        "create_by": pullrequest.user.email,
+                        "create_by": pullrequest.user.login,
                         # fmt: off
                         "merged_at": pullrequest.merged_at.strftime("%Y-%m-%d %H:%M:%S") if pullrequest.merged_at != None else None,  # noqa: E501,E711
-                        "merged_by": pullrequest.merged_by.email if pullrequest.merged_by != None else None,  # noqa: E501,E711
+                        "merged_by": pullrequest.merged_by.login if pullrequest.merged_by != None else None,  # noqa: E501,E711
                         "closed_at": pullrequest.closed_at.strftime("%Y-%m-%d %H:%M:%S") if pullrequest.closed_at != None else None,  # noqa: E501,E711
                         "reviews": reviews if len(reviews) != 0 else None
                         # noqa: E501,E711
