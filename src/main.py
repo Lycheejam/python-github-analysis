@@ -6,6 +6,8 @@ from github import Github
 from models.pullrequest_model import PullRequest
 from models.reviewer_model import Reviewer
 from models.setting import session
+import calendar
+import time
 
 load_dotenv()
 
@@ -19,9 +21,21 @@ class GithubPullRequestAnalysis:
         for repo_name in repo_list:
             repo = self.g_client.get_repo(repo_name)
             pullrequests = repo.get_pulls(state="all", sort="created", direction="desc")
+            pprint.pprint(repo_name)
 
             try:
                 for pullrequest in pullrequests:
+                    rate_limit = self.g_client.get_rate_limit().core
+                    pprint.pprint(rate_limit)
+                    if rate_limit.remaining < 20:
+                        pprint.pprint(rate_limit.remaining)
+                        reset_timestamp = calendar.timegm(rate_limit.reset.timetuple())
+                        sleep_time = (
+                            reset_timestamp - calendar.timegm(time.gmtime()) + 10
+                        )
+                        pprint.pprint(sleep_time)
+                        time.sleep(sleep_time)
+
                     merged_at = None
                     if pullrequest.merged_at is not None:
                         merged_at = pullrequest.merged_at
